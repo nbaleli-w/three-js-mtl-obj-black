@@ -1,126 +1,82 @@
 import "../styles/index.scss";
 
 import * as THREE from "three";
-import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
-import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
-import { DDSLoader } from "three/examples/jsm/loaders/DDSLoader";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
-var container;
+const backgroundColor = 0x000000;
 
-var camera, scene, renderer;
+/*////////////////////////////////////////*/
 
-var mouseX = 0,
-  mouseY = 0;
-
-var windowHalfX = window.innerWidth / 2;
-var windowHalfY = window.innerHeight / 2;
-
-init();
-animate();
-
-function init() {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-
-  camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    1,
-    2000
-  );
-  camera.position.z = 250;
-
-  // scene
-
-  scene = new THREE.Scene();
-  const ambientLight = new THREE.AmbientLight("#fff");
-  scene.add(ambientLight);
-
-  var pointLight = new THREE.PointLight(0xffffff, 0.8);
-  camera.add(pointLight);
-  scene.add(camera);
-  scene.background = new THREE.Color(0xffffff);
-  // model
-
-  var onProgress = function (xhr) {
-    if (xhr.lengthComputable) {
-      var percentComplete = (xhr.loaded / xhr.total) * 100;
-      console.log(Math.round(percentComplete, 2) + "% downloaded");
-    }
-  };
-
-  var onError = function (error) {
-    console.log(error);
-  };
-
-  var manager = new THREE.LoadingManager();
-  manager.addHandler(/\.dds$/i, new DDSLoader());
-
-  // comment in the following line and import TGALoader if your asset uses TGA textures
-  // manager.addHandler( /\.tga$/i, new TGALoader() );
-
-  new MTLLoader(manager).load(
-    "/public/scene_mesh_textured.mtl",
-    function (materials) {
-      materials.preload();
-
-      new OBJLoader(manager).setMaterials(materials).load(
-        "/public/scene_mesh_decimated_textured.obj",
-        function (object) {
-          object.position.y = -95;
-          scene.add(object);
-        },
-        onProgress,
-        onError
-      );
-    },
-    null,
-    function (error) {
-      console.log(error);
-    }
-  );
-
-  //
-
-  renderer = new THREE.WebGLRenderer();
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  container.appendChild(renderer.domElement);
-
-  document.addEventListener("mousemove", onDocumentMouseMove, false);
-
-  //
-
-  window.addEventListener("resize", onWindowResize, false);
-}
-
-function onWindowResize() {
-  windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight / 2;
-
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function onDocumentMouseMove(event) {
-  mouseX = (event.clientX - windowHalfX) / 2;
-  mouseY = (event.clientY - windowHalfY) / 2;
-}
-
-//
-
-function animate() {
-  requestAnimationFrame(animate);
-  render();
-}
-
+var renderCalls = [];
 function render() {
-  camera.position.x += (mouseX - camera.position.x) * 0.05;
-  camera.position.y += (-mouseY - camera.position.y) * 0.05;
+  requestAnimationFrame(render);
+  renderCalls.forEach((callback) => {
+    callback();
+  });
+}
+render();
 
-  camera.lookAt(scene.position);
+/*////////////////////////////////////////*/
 
+var scene = new THREE.Scene();
+
+var camera = new THREE.PerspectiveCamera(
+  80,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.set(5, 5, 5);
+
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+// renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+
+document.body.appendChild(renderer.domElement);
+
+function renderScene() {
   renderer.render(scene, camera);
 }
+renderCalls.push(renderScene);
+
+/* ////////////////////////////////////////////////////////////////////////// */
+
+var controls = new OrbitControls(camera, renderer.domElement);
+
+controls.rotateSpeed = 0.3;
+controls.zoomSpeed = 0.9;
+
+controls.minDistance = 3;
+controls.maxDistance = 20;
+
+controls.minPolarAngle = 0; // radians
+controls.maxPolarAngle = Math.PI / 2; // radians
+
+// controls.enableDamping = true;
+// controls.dampingFactor = 0.05;
+
+renderCalls.push(function () {
+  controls.update();
+});
+
+/* ////////////////////////////////////////////////////////////////////////// */
+
+// var light = new THREE.PointLight(0xffffcc, 20, 200);
+// light.position.set(4, 30, -20);
+// scene.add(light);
+
+var light2 = new THREE.AmbientLight(0x20202a, 20, 100);
+light2.position.set(30, -10, 30);
+scene.add(light2);
+
+/* ////////////////////////////////////////////////////////////////////////// */
+
+var loader = new GLTFLoader();
+loader.crossOrigin = true;
+loader.load("/public/model.glb", function (data) {
+  var object = data.scene;
+  object.position.set(0, -10, -0.75);
+  scene.add(object);
+});
